@@ -13,10 +13,6 @@ RingBuf * ringbuf_new(size_t size);
 /* size-getter of a ring buffer */
 size_t ringbuf_size(RingBuf * rngbf);
 
-/* add an element to a ring buffer
-   currently, only doubles are supported as elements */
-void ringbuf_add(RingBuf * rngbf, double elem);
-
 /* check wether the ring buffer contains the element */
 bool ringbuf_contains(RingBuf * rngbf, double elem);
 
@@ -30,5 +26,10 @@ size_t ringbuf_numelems(RingBuf * rngbf);
 
 /* delete the ring buffer */
 void ringbuf_delete(RingBuf * rngbf);
+
+/* the three basic functions expected of a cyclic buffer */
+void ringbuf_push(RingBuf * rngbf, double elem);
+double ringbuf_peek(RingBuf * rngbf);
+double ringbuf_pop(RingBuf * rngbf);
 
 #endif //RINGBUF

@@ -51,7 +51,7 @@ size_t ringbuf_size(RingBuf * rngbf) {
     return rngbf->size;
 }
 
-void ringbuf_add(RingBuf * rngbf, double elem) {
+void ringbuf_push(RingBuf * rngbf, double elem) {
     /* special case of a completely empty buffer */
     if (rngbf->empty) {
         rngbf->elements[0] = elem;
@@ -120,6 +120,18 @@ size_t ringbuf_numelems(RingBuf * rngbf) {
     } else {
         return rngbf->size;
     }
+}
+
+double ringbuf_peek(RingBuf * rngbf) {
+    /* simply fetch the oldest element */
+    return ringbuf_get(rngbf, 0);
+}
+
+double ringbuf_pop(RingBuf * rngbf) {
+    /* pop is supposed to return the oldest element and remove it,
+       but since this simple ring buffer was designed to have constant
+       size, we don't need to remove it, it'll just get overwritten. */
+    return ringbuf_get(rngbf, 0);
 }
 
 void ringbuf_delete(RingBuf * rngbf) {

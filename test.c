@@ -12,7 +12,7 @@ int main(void) {
 
     for (i = 0; i < 20; i += 2) {
         count++;
-        ringbuf_add(rb, i);
+        ringbuf_push(rb, i);
         assert(ringbuf_contains(rb, i));
         assert(ringbuf_numelems(rb) == count);
     }
