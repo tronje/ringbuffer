@@ -6,12 +6,6 @@ struct RingBuf {
     /* buffer's size */
     size_t size;
     
-    /* start of buffer */
-    void * start;
-
-    /* end of buffer */
-    void * end;
-
     /* index of first element in buffer */
     size_t first;
 
@@ -26,32 +20,30 @@ struct RingBuf {
 };
 
 RingBuf * ringbuf_new(size_t size) {
-    // declare a ring buffer
+    /* declare a ring buffer */
     RingBuf * ret;
     
-    // give our buffer some memory
+    /* give our buffer some memory */
     ret = (RingBuf*) malloc(sizeof(RingBuf));
     if (ret == NULL) {
         printf("memory allocation failed!\n");
         exit(EXIT_FAILURE);
     }
 
-    // give it some more memory so elements can live in it
+    /* give it some more memory so elements can live in it */
     ret->elements = (double *) calloc(size, sizeof(double));
     if (ret->elements == NULL) {
         printf("memory allocation failed!\n");
         exit(EXIT_FAILURE);
     }
 
-    // set our buffer's properties
+    /* set our buffer's properties */
     ret->size = size;
-    ret->start = &(ret->elements[0]);
-    ret->end = &(ret->elements[size - 1]);
     ret->first = 0;
     ret->last = 0;
     ret->empty = true;
 
-    // return the buffer
+    /* return the buffer */
     return ret;
 }
 
@@ -67,7 +59,7 @@ void ringbuf_add(RingBuf * rngbf, double elem) {
         return;
     }
 
-    /* special case if the buffer isn't filled yet */
+    /* special case if the buffer isn't full yet */
     if (rngbf->first == 0 && rngbf->last < rngbf->size - 1) {
         rngbf->last++;
         rngbf->elements[rngbf->last] = elem;
@@ -102,7 +94,7 @@ bool ringbuf_contains(RingBuf * rngbf, double elem) {
     size_t s;
 
     /* simply loop over our elements array
-       and see if we get any matches.
+       and see if we get a match.
        since it's unsorted, this is as efficient
        as it gets, without parallelization. */
     for (s = 0; s < rngbf->size; ++s) {
