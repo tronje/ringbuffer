@@ -32,4 +32,7 @@ void ringbuf_push(RingBuf * rngbf, double elem);
 double ringbuf_peek(RingBuf * rngbf);
 double ringbuf_pop(RingBuf * rngbf);
 
+/* print the buffer in a pretty format */
+void ringbuf_pretty(RingBuf * rb);
+
 #endif //RINGBUF

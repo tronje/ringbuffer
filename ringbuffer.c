@@ -12,8 +12,8 @@ struct RingBuf {
     /* index of last element in buffer */
     size_t last;
 
-    /* keep track of wether the buffer is empty */
-    bool empty;
+    /* keep track of number of elements */
+    size_t num_elems;
 
     /* the actual array of data we store */
     double * elements;
@@ -41,101 +41,134 @@ RingBuf * ringbuf_new(size_t size) {
     ret->size = size;
     ret->first = 0;
     ret->last = 0;
-    ret->empty = true;
+    ret->num_elems = 0;
 
     /* return the buffer */
     return ret;
 }
 
-size_t ringbuf_size(RingBuf * rngbf) {
-    return rngbf->size;
+size_t ringbuf_size(RingBuf * rb) {
+    return rb->size;
 }
 
-void ringbuf_push(RingBuf * rngbf, double elem) {
+void ringbuf_push(RingBuf * rb, double elem) {
     /* special case of a completely empty buffer */
-    if (rngbf->empty) {
-        rngbf->elements[0] = elem;
-        rngbf->empty = false;
+    if (rb->num_elems == 0) {
+        rb->elements[0] = elem;
+        rb->num_elems++;
         return;
     }
 
     /* special case if the buffer isn't full yet */
-    if (rngbf->first == 0 && rngbf->last < rngbf->size - 1) {
-        rngbf->last++;
-        rngbf->elements[rngbf->last] = elem;
+    if (rb->num_elems < rb->size) {
+        rb->last++;
+
+        if (rb->last >= rb->size)
+            rb->last = 0;
+
+        rb->elements[rb->last] = elem;
+        rb->num_elems++;
         return;
     }
 
     /* handle the three cases of a full buffer
        by overwriting the oldest element */
-    if (rngbf->last == rngbf->size - 1) {
+    if (rb->last == rb->size - 1) {
         /* last overflows to zero, first is incremented */
-        rngbf->first++;
-        rngbf->last = 0;
-        rngbf->elements[0] = elem;
-    } else if (rngbf->first == rngbf->size - 1) {
+        rb->first++;
+        rb->last = 0;
+        rb->elements[0] = elem;
+    } else if (rb->first == rb->size - 1) {
         /* first overflows to zero, last is incremented */
-        rngbf->first = 0;
-        rngbf->last++;
-        rngbf->elements[rngbf->last] = elem;
+        rb->first = 0;
+        rb->last++;
+        rb->elements[rb->last] = elem;
     } else {
         /* nothing overflows, both are incremented */
-        rngbf->first++;
-        rngbf->last++;
-        rngbf->elements[rngbf->last] = elem;
+        rb->first++;
+        rb->last++;
+        rb->elements[rb->last] = elem;
     }
 
     /* at the end, no matter what, elem must be the last
        element found in the ring buffer! */
-    assert(rngbf->elements[rngbf->last] == elem);
+    assert(rb->elements[rb->last] == elem);
 }
 
-bool ringbuf_contains(RingBuf * rngbf, double elem) {
-    size_t s;
+bool ringbuf_contains(RingBuf * rb, double elem) {
+    size_t f = rb->first;
+    size_t l = rb->last;
+    size_t i;
 
-    /* simply loop over our elements array
-       and see if we get a match.
-       since it's unsorted, this is as efficient
-       as it gets, without parallelization. */
-    for (s = 0; s < rngbf->size; ++s) {
-        if (rngbf->elements[s] == elem)
-            return true;
-    }
-
-    return false;
-}
-
-double ringbuf_get(RingBuf * rngbf, unsigned int idx) {
-    /* since we want the indeces to indicate age, not
-       absolute position in our array, we do this: */
-    return rngbf->elements[rngbf->first + idx];
-}
-
-size_t ringbuf_numelems(RingBuf * rngbf) {
-    if (rngbf->empty) {
-        return 0;
-    }
-    else if (rngbf->first == 0 && rngbf->last < rngbf->size - 1) {
-        return rngbf->last + 1;
+    if (f < l) {
+        for (i = f; i <= l; ++i) {
+            if (rb->elements[i] == elem)
+                return true;
+        }
+        return false;
     } else {
-        return rngbf->size;
+        for (i = f; i < rb->size; ++i) {
+            if (rb->elements[i] == elem)
+                return true;
+        }
+
+        for (i = 0; i <= l; ++i) {
+            if (rb->elements[i] == elem)
+                return true;
+        }
+        return false;
     }
 }
 
-double ringbuf_peek(RingBuf * rngbf) {
+double ringbuf_get(RingBuf * rb, unsigned int idx) {
+    size_t i = rb->first + idx;
+
+    if (i >= rb->size) {
+        i = i % rb->size;
+    }
+
+    return rb->elements[i];
+}
+
+size_t ringbuf_numelems(RingBuf * rb) {
+    return rb->num_elems;
+}
+
+double ringbuf_peek(RingBuf * rb) {
     /* simply fetch the oldest element */
-    return ringbuf_get(rngbf, 0);
+    return ringbuf_get(rb, 0);
 }
 
-double ringbuf_pop(RingBuf * rngbf) {
-    /* pop is supposed to return the oldest element and remove it,
-       but since this simple ring buffer was designed to have constant
-       size, we don't need to remove it, it'll just get overwritten. */
-    return ringbuf_get(rngbf, 0);
+double ringbuf_pop(RingBuf * rb) {
+    assert(rb->num_elems != 0);
+
+    double ret = ringbuf_get(rb, 0);
+
+    if (rb->first == rb->size - 1) {
+        rb->first = 0;
+    } else {
+        rb->first++;
+    }
+
+    rb->num_elems--;
+    return ret;
 }
 
-void ringbuf_delete(RingBuf * rngbf) {
-    assert(rngbf != NULL);
-    free(rngbf->elements);
-    free(rngbf);
+void ringbuf_pretty(RingBuf * rb) {
+    assert(rb != NULL);
+
+    size_t i;
+
+    for (i = 0; i < rb->size; ++i) {
+        printf("%f ", rb->elements[i]);
+    }
+    printf("\n");
+    printf("first: %lu\n", rb->first);
+    printf("last: %lu\n", rb->last);
+}
+
+void ringbuf_delete(RingBuf * rb) {
+    assert(rb != NULL);
+    free(rb->elements);
+    free(rb);
 }
